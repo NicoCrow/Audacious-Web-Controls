@@ -2,7 +2,6 @@ const http = require('http');
 const fs   = require('fs');
 const url  = require('url');
 const path = require('path');
-
 const exec = require('child_process').exec;
 
 
@@ -18,6 +17,7 @@ const mimeTypes = {
 	'.ttf' : 'aplication/font-sfnt'
 };
 
+
 const commands = {
 	prev:  () => "audacious -r",
 	play:  () => "audacious -p",
@@ -27,10 +27,19 @@ const commands = {
 };
 
 
+function response(res, status, type, content){
+	res.writeHead(status, {
+		'Content-Type': type
+	});
+	res.write(content);
+	res.end();
+};
+
+
 let server = http.createServer(function(req, res){
 	let pathName = url.parse(req.url).path;
 
-	// if we get home page
+	// home page
 	if(pathName === '/'){
 		pathName = '/index.html';
 	}
@@ -40,33 +49,35 @@ let server = http.createServer(function(req, res){
 	let extName = path.extname(pathName);
 	let staticFiles = `${__dirname}/public/${pathName}`;
 
-	// console.log(pathName, extName, staticFiles);
+
 	if(commands.hasOwnProperty(pathName)){
+		// audacious command
+
 		console.log(commands[pathName]());
 
 		let dir = exec(commands[pathName](), function(err, stdout, stderr){
 			if (err){
-				// should have err.code here?
 				console.log(err);
+
+				response(res, 500, 'application/json', JSON.stringify({
+					msg: 'Internal server error.',
+					err: err
+				}));
+
+				throw err;
 			}
 			console.log(stdout);
 		});
 
 		dir.on('exit', function (code){
-			// exit code is code
-			console.log(code);
-
-			res.writeHead(200, {
-				'Content-Type': 'application/json'
-			});
-
-			res.write(JSON.stringify({
+			response(res, 200, 'application/json', JSON.stringify({
 				msg: `${pathName}`,
 			}));
-
-			res.end();
 		});
+
 	} else if (
+		// binary file
+
 		extName =='.jpg'  ||
 		extName == '.png' ||
 		extName == '.ico' ||
@@ -74,50 +85,38 @@ let server = http.createServer(function(req, res){
 		extName == '.ttf' ||
 		extName == '.svg'){
 
-			let file;
-			try {
-				file = fs.readFileSync(staticFiles);
-				res.writeHead(200, {
-					'Content-Type': mimeTypes[extName]
-				});
-				res.write(file, 'binary');
-				res.end();
-			} catch (err){
-				if (err.code === 'ENOENT'){
-					res.writeHead(404, {
-						'Content-Type': 'application/json'
-					});
-					res.write(JSON.stringify({
-						msg: `File "${pathName}" is not found.`,
-						err: err
-					}));
-				} else {
-					res.writeHead(500, {
-						'Content-Type': 'application/json'
-					});
-					res.write(JSON.stringify({
-						msg: `Internal server error.`,
-						err: err
-					}));
+		let file;
+		try {
+			file = fs.readFileSync(staticFiles);
+			res.writeHead(200, {
+				'Content-Type': mimeTypes[extName]
+			});
+			res.write(file, 'binary');
+			res.end();
+		} catch (err){
+			if (err.code === 'ENOENT'){
+				response(res, 404, 'application/json', JSON.stringify({
+					msg: `File "${pathName}" is not found.`,
+					err: err
+				}));
+			} else {
+				response(res, 500, 'application/json', JSON.stringify({
+					msg: 'Internal server error.',
+					err: err
+				}));
 
-					throw err;
-				}
-				res.end();
+				throw err;
 			}
+		}
 	} else {
+		// text file
+
 		fs.readFile(staticFiles, 'utf8', function(err, data){
 			if(!err){
-				res.writeHead(200, {
-					'Content-Type': mimeTypes[extName]
-				});
-				res.end(data);
+				response(res, 200, mimeTypes[extName], data);
 			}else {
-				res.writeHead(404, {
-					'Content-Type': 'text/html;charset=utf8'
-				});
-				res.write(`File <em>"${staticFiles}"</em> is not found.`);
+				response(res, 404, 'text/html;charset=utf8', `File <em>"${staticFiles}"</em> is not found.`);
 			}
-			res.end();
 		});
 	}
 }).listen(8080);
