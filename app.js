@@ -3,8 +3,10 @@ const fs   = require('fs');
 const url  = require('url');
 const path = require('path');
 
+const exec = require('child_process').exec;
 
-let mimeTypes = {
+
+const mimeTypes = {
 	'.html': 'text/html',
 	'.css' : 'text/css',
 	'.js'  : 'text/javascript',
@@ -16,12 +18,12 @@ let mimeTypes = {
 	'.ttf' : 'aplication/font-sfnt'
 };
 
-let commands = {
-	prev: ()=>{console.log("prev")},
-	play: ()=>{console.log("play")},
-	pause: ()=>{console.log("pause")},
-	stop: ()=>{console.log("stop")},
-	next: ()=>{console.log("next")}
+const commands = {
+	prev:  () => "audacious -r",
+	play:  () => "audacious -p",
+	pause: () => "audacious -u",
+	stop:  () => "audacious -s",
+	next:  () => "audacious -f"
 };
 
 
@@ -40,17 +42,30 @@ let server = http.createServer(function(req, res){
 
 	// console.log(pathName, extName, staticFiles);
 	if(commands.hasOwnProperty(pathName)){
-		commands[pathName];
+		console.log(commands[pathName]());
 
-		res.writeHead(200, {
-			'Content-Type': 'application/json'
+		let dir = exec(commands[pathName](), function(err, stdout, stderr){
+			if (err){
+				// should have err.code here?
+				console.log(err);
+			}
+			console.log(stdout);
 		});
 
-		res.write(JSON.stringify({
-			msg: `${pathName}`,
-		}));
+		dir.on('exit', function (code){
+			// exit code is code
+			console.log(code);
 
-		res.end();
+			res.writeHead(200, {
+				'Content-Type': 'application/json'
+			});
+
+			res.write(JSON.stringify({
+				msg: `${pathName}`,
+			}));
+
+			res.end();
+		});
 	} else if (
 		extName =='.jpg'  ||
 		extName == '.png' ||
