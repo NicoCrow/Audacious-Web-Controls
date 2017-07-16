@@ -1,0 +1,29 @@
+body {
+	background: #ddc7fb;
+}
+
+h1,
+.text-center {
+	text-align: center;
+}
+
+button {
+	border: 1px solid #be8eff;
+	border-radius: 5px;
+	padding: 8px 16px;
+	margin: 4px;
+	min-width: 50px;
+	background: #cba5ff;
+	outline: none;
+	transition: all .3s ease;
+	box-shadow: 1px 2px 3px rgba(0,0,0,.2);
+}
+
+button:hover {
+	background: #bb95ef;
+	box-shadow: 2px 3px 3px rgba(0,0,0,.3);
+}
+
+button:active {
+	box-shadow: inset 1px 2px 2px rgba(0,0,0,.2);
+}
